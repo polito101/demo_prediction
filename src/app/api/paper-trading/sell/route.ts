@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
       );
     }
 
+    revalidatePath("/portfolio");
     return NextResponse.json(result.nextState);
   } catch {
     return NextResponse.json(

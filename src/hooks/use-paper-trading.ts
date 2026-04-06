@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { fetchPolymarketOutcomePrices } from "@/lib/polymarket-client";
+import { PAPER_PORTFOLIO_RESET_EVENT } from "@/lib/paper-portfolio-events";
 import {
   createInitialPaperPortfolioState,
   type PaperPortfolioState,
@@ -60,6 +60,12 @@ export function usePaperTrading() {
     void loadPortfolio();
   }, [loadPortfolio]);
 
+  useEffect(() => {
+    const sync = () => void loadPortfolio();
+    window.addEventListener(PAPER_PORTFOLIO_RESET_EVENT, sync);
+    return () => window.removeEventListener(PAPER_PORTFOLIO_RESET_EVENT, sync);
+  }, [loadPortfolio]);
+
   const buyPosition = useCallback(
     async (input: BuyPositionInput): Promise<HookResult> => {
       const res = await fetch("/api/paper-trading/buy", {
@@ -108,10 +114,6 @@ export function usePaperTrading() {
     []
   );
 
-  const getOutcomePrices = useCallback(async (marketId: string) => {
-    return fetchPolymarketOutcomePrices(marketId);
-  }, []);
-
   const resetPortfolio = useCallback(async () => {
     const res = await fetch("/api/paper-trading/reset", {
       method: "POST",
@@ -132,7 +134,6 @@ export function usePaperTrading() {
     history: portfolio.history,
     buyPosition,
     sellPosition,
-    getOutcomePrices,
     resetPortfolio,
   };
 }

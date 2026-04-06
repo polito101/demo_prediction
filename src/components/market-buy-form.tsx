@@ -48,6 +48,8 @@ export function MarketBuyForm({
 
   if (!outcomes.length) return null;
 
+  const selectedOutcome = outcomes.find((o) => o.id === outcomeId);
+
   return (
     <form onSubmit={onSubmit} className="space-y-4 rounded-lg border p-4">
       <h3 className="font-semibold">Comprar (AMM LMSR)</h3>
@@ -57,8 +59,10 @@ export function MarketBuyForm({
           value={outcomeId}
           onValueChange={(v) => v && setOutcomeId(v)}
         >
-          <SelectTrigger>
-            <SelectValue />
+          <SelectTrigger className="w-full min-w-0">
+            <SelectValue placeholder="Elige Sí o No">
+              {selectedOutcome?.name ?? "—"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {outcomes.map((o) => (

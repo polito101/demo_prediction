@@ -3,6 +3,7 @@ import type { PriceHistoryPoint } from "@/lib/polymarket";
 
 /**
  * Une series de precios CLOB (timestamps distintos) en filas para Recharts.
+ * Usa `tMs` (unix ms) como eje X para evitar claves duplicadas al formatear solo minuto.
  */
 export function mergePolymarketHistories(
   series: { points: PriceHistoryPoint[] }[],
@@ -25,13 +26,7 @@ export function mergePolymarketHistories(
   const rows: ChartRow[] = [];
 
   for (const t of sorted) {
-    const row: ChartRow = { t: "" };
-    row.t = new Date(t * 1000).toLocaleString("es-ES", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const row: ChartRow = { tMs: t * 1000 };
 
     for (let i = 0; i < series.length; i++) {
       const exact = series[i].points.find((p) => p.t === t);
@@ -49,4 +44,14 @@ export function mergePolymarketHistories(
   }
 
   return rows;
+}
+
+/** Un punto «ahora» con precios Gamma cuando el CLOB aún no devuelve historial. */
+export function chartRowsFromCurrentPrices(prices: number[]): ChartRow[] {
+  const now = Date.now();
+  const row: ChartRow = { tMs: now };
+  for (let i = 0; i < prices.length; i++) {
+    row[`o${i}`] = prices[i] ?? 0;
+  }
+  return [row];
 }

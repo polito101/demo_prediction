@@ -13,9 +13,28 @@ if (!authSecret) {
   );
 }
 
+/** Auth.js puede emitir JWTSessionError desde otra copia de @auth/core (p. ej. vía next-auth); `instanceof` falla. */
+function isJwtSessionError(error: Error): boolean {
+  const t = "type" in error ? (error as { type?: string }).type : undefined;
+  return error.name === "JWTSessionError" || t === "JWTSessionError";
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   secret: authSecret ?? "dev-only-insecure-secret-change-me",
+  /** Evita ruido en consola cuando hay cookie antigua firmada con otro secret (Auth.js la borra igual). */
+  logger: {
+    error(error) {
+      if (isJwtSessionError(error)) return;
+      const red = "\x1b[31m";
+      const reset = "\x1b[0m";
+      const name =
+        "type" in error && typeof error.type === "string"
+          ? error.type
+          : error.name;
+      console.error(`${red}[auth][error]${reset} ${name}: ${error.message}`);
+    },
+  },
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   providers: [
     Credentials({

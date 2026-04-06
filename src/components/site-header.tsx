@@ -7,10 +7,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LayoutDashboard, User } from "lucide-react";
 import { SignOutButton } from "@/components/sign-out-button";
+import { UserMenuPaperReset } from "@/components/user-menu-paper-reset";
 
 type Tenant = {
   name: string;
@@ -56,6 +58,9 @@ export async function SiteHeader({ tenant }: { tenant: Tenant }) {
           <Link href="/" className={buttonVariants({ variant: "ghost" })}>
             Mercados
           </Link>
+          <Link href="/traders" className={buttonVariants({ variant: "ghost" })}>
+            Traders
+          </Link>
           {session?.user && (
             <Link href="/portfolio" className={buttonVariants({ variant: "ghost" })}>
               Portfolio
@@ -87,6 +92,9 @@ export async function SiteHeader({ tenant }: { tenant: Tenant }) {
                     Mi portfolio
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <UserMenuPaperReset />
+                <DropdownMenuSeparator />
                 <SignOutButton />
               </DropdownMenuContent>
             </DropdownMenu>

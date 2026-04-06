@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getTenantFromRequest } from "@/lib/tenant";
 import {
@@ -10,9 +11,19 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { PolymarketSection } from "@/components/polymarket-section";
+import {
+  PolymarketPinnedCard,
+  PolymarketSection,
+} from "@/components/polymarket-section";
+import { fetchPinnedBtcUpdown5mMarket } from "@/lib/polymarket";
 
 export const dynamic = "force-dynamic";
+
+type LocalMarket = Prisma.MarketGetPayload<{
+  include: {
+    outcomes: { orderBy: { id: "asc" } };
+  };
+}>;
 
 function statusLabel(s: string) {
   switch (s) {
@@ -31,17 +42,36 @@ function statusLabel(s: string) {
 
 export default async function HomePage() {
   const tenant = await getTenantFromRequest();
+  const pinnedBtc5m = await fetchPinnedBtcUpdown5mMarket();
 
-  const markets = await prisma.market.findMany({
-    where: { tenantId: tenant.id, status: { in: ["OPEN", "PAUSED"] } },
-    orderBy: { createdAt: "desc" },
-    include: {
-      outcomes: { orderBy: { id: "asc" } },
-    },
-  });
+  let markets: LocalMarket[] = [];
+  let marketsLoadError: string | null = null;
+
+  try {
+    markets = await prisma.market.findMany({
+      where: { tenantId: tenant.id, status: { in: ["OPEN", "PAUSED"] } },
+      orderBy: { createdAt: "desc" },
+      include: {
+        outcomes: { orderBy: { id: "asc" } },
+      },
+    });
+  } catch (e) {
+    const code =
+      e instanceof Prisma.PrismaClientKnownRequestError ? e.code : null;
+    const hint =
+      code === "P2021" || code === "P1001"
+        ? "Comprueba que PostgreSQL esté en marcha, que DATABASE_URL en .env sea correcta y ejecuta: npx prisma migrate deploy"
+        : "Revisa DATABASE_URL y que las migraciones estén aplicadas (npx prisma migrate deploy).";
+    marketsLoadError = hint;
+    if (process.env.NODE_ENV === "development") {
+      console.error("[HomePage] prisma.market.findMany:", e);
+    }
+  }
 
   return (
     <div className="space-y-10">
+      {pinnedBtc5m && <PolymarketPinnedCard m={pinnedBtc5m} />}
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Mercados</h1>
         <p className="text-muted-foreground">
@@ -50,7 +80,9 @@ export default async function HomePage() {
         </p>
       </div>
 
-      <PolymarketSection />
+      <PolymarketSection
+        excludeMarketIds={pinnedBtc5m ? [pinnedBtc5m.id] : []}
+      />
 
       <Separator />
 
@@ -62,6 +94,12 @@ export default async function HomePage() {
             requerido).
           </p>
         </div>
+
+        {marketsLoadError && (
+          <p className="rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            No se pudieron cargar los mercados locales. {marketsLoadError}
+          </p>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           {markets.map((m) => (

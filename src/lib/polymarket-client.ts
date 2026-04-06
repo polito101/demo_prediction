@@ -1,4 +1,5 @@
 import {
+  parseClobTokenIds,
   parsePolymarketOutcomes,
   type PolymarketGammaMarket,
 } from "@/lib/polymarket";
@@ -18,10 +19,14 @@ export async function fetchPolymarketMarketByIdClient(
   return res.json() as Promise<PolymarketGammaMarket>;
 }
 
+/** Precios alineados con outcomes que tienen token CLOB (misma regla que la página / gráfico). */
 export async function fetchPolymarketOutcomePrices(
   marketId: string
 ): Promise<number[]> {
   const market = await fetchPolymarketMarketByIdClient(marketId);
   if (!market) return [];
-  return parsePolymarketOutcomes(market).map((o) => o.price);
+  const tokens = parseClobTokenIds(market.clobTokenIds);
+  const outcomesAll = parsePolymarketOutcomes(market);
+  const n = Math.min(outcomesAll.length, tokens.length);
+  return outcomesAll.slice(0, n).map((o) => o.price);
 }
