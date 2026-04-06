@@ -1,0 +1,199 @@
+// Prediction market white-label — PostgreSQL (Prisma ORM 7+)
+// URLs de conexión: prisma.config.ts (CLI) + adapter en src/lib/db.ts (runtime)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum MarketStatus {
+  OPEN
+  CLOSED
+  RESOLVED
+  PAUSED
+}
+
+enum PaperTradeType {
+  BUY
+  SELL
+}
+
+model Tenant {
+  id           String   @id @default(cuid())
+  name         String
+  logoUrl      String?
+  primaryColor String   @default("#6366f1")
+  domain       String?  @unique
+  createdAt    DateTime @default(now())
+  users        User[]
+  markets      Market[]
+}
+
+model User {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email         String
+  passwordHash  String
+  name          String?
+  role          Role      @default(USER)
+  balance       Decimal   @default(0) @db.Decimal(18, 8)
+  walletAddress String?
+  suspended     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  positions     Position[]
+  trades        Trade[]
+  adjustmentsFrom BalanceAdjustment[] @relation("AdminAdjustments")
+  adjustmentsTo   BalanceAdjustment[] @relation("UserAdjustments")
+  paperPortfolio  PaperPortfolio?
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model PaperPortfolio {
+  id             String          @id @default(cuid())
+  userId         String          @unique
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceUsdc    Decimal         @default(10000) @db.Decimal(18, 8)
+  initialBalance Decimal         @default(10000) @db.Decimal(18, 8)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  positions      PaperPosition[]
+  trades         PaperTrade[]
+}
+
+model PaperPosition {
+  id           String         @id @default(cuid())
+  portfolioId  String
+  portfolio    PaperPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  marketId     String
+  outcomeIndex Int
+  outcomeName  String
+  shares       Decimal        @db.Decimal(18, 8)
+  avgBuyPrice  Decimal        @db.Decimal(18, 8)
+  openedAt     DateTime
+  updatedAt    DateTime
+
+  @@unique([portfolioId, marketId, outcomeIndex])
+  @@index([portfolioId, marketId])
+}
+
+model PaperTrade {
+  id           String         @id @default(cuid())
+  portfolioId  String
+  portfolio    PaperPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  type         PaperTradeType
+  marketId     String
+  outcomeIndex Int
+  outcomeName  String
+  shares       Decimal        @db.Decimal(18, 8)
+  price        Decimal        @db.Decimal(18, 8)
+  usdcAmount   Decimal        @db.Decimal(18, 8)
+  realizedPnl  Decimal?       @db.Decimal(18, 8)
+  timestamp    DateTime       @default(now())
+
+  @@index([portfolioId, timestamp(sort: Desc)])
+  @@index([portfolioId, marketId])
+}
+
+model Market {
+  id             String       @id @default(cuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?      @db.Text
+  category       String?
+  imageUrl       String?
+  resolutionDate DateTime?
+  status         MarketStatus @default(OPEN)
+  outcomeId      String?
+  winningOutcome Outcome?     @relation("MarketWinner", fields: [outcomeId], references: [id])
+  liquidityB     Decimal      @default(100) @db.Decimal(18, 8)
+  feeRate        Decimal      @default(0.02) @db.Decimal(8, 6)
+  resolvedAt     DateTime?
+  resolutionNote String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  outcomes  Outcome[]  @relation("MarketOutcomes")
+  positions Position[]
+  trades    Trade[]
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model Outcome {
+  id                String   @id @default(cuid())
+  marketId          String
+  market            Market   @relation("MarketOutcomes", fields: [marketId], references: [id], onDelete: Cascade)
+  name              String
+  currentPrice      Decimal  @default(0.5) @db.Decimal(18, 8)
+  sharesOutstanding Decimal  @default(0) @db.Decimal(18, 8)
+  marketsWon        Market[] @relation("MarketWinner")
+  positions         Position[]
+  trades            Trade[]
+
+  @@index([marketId])
+}
+
+model Position {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketId        String
+  market          Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  outcomeId       String
+  outcome         Outcome  @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  amount          Decimal  @db.Decimal(18, 8)
+  shares          Decimal  @db.Decimal(18, 8)
+  priceAtPurchase Decimal  @db.Decimal(18, 8)
+  settled         Boolean  @default(false)
+  payout          Decimal? @db.Decimal(18, 8)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([marketId])
+}
+
+model Trade {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketId  String
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  outcomeId String
+  outcome   Outcome  @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  side      String
+  amount    Decimal  @db.Decimal(18, 8)
+  shares    Decimal  @db.Decimal(18, 8)
+  price     Decimal  @db.Decimal(18, 8)
+  createdAt DateTime @default(now())
+
+  @@index([marketId])
+  @@index([createdAt])
+}
+
+model BalanceAdjustment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserAdjustments", fields: [userId], references: [id], onDelete: Cascade)
+  adminId   String
+  admin     User     @relation("AdminAdjustments", fields: [adminId], references: [id], onDelete: Cascade)
+  amount    Decimal  @db.Decimal(18, 8)
+  reason    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}

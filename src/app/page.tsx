@@ -1,101 +1,108 @@
-import Image from "next/image";
+import Link from "next/link";
+import { prisma } from "@/lib/db";
+import { getTenantFromRequest } from "@/lib/tenant";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { PolymarketSection } from "@/components/polymarket-section";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+function statusLabel(s: string) {
+  switch (s) {
+    case "OPEN":
+      return "Abierto";
+    case "PAUSED":
+      return "Pausado";
+    case "CLOSED":
+      return "Cerrado";
+    case "RESOLVED":
+      return "Resuelto";
+    default:
+      return s;
+  }
+}
+
+export default async function HomePage() {
+  const tenant = await getTenantFromRequest();
+
+  const markets = await prisma.market.findMany({
+    where: { tenantId: tenant.id, status: { in: ["OPEN", "PAUSED"] } },
+    orderBy: { createdAt: "desc" },
+    include: {
+      outcomes: { orderBy: { id: "asc" } },
+    },
+  });
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="space-y-10">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Mercados</h1>
+        <p className="text-muted-foreground">
+          Explora mercados reales de Polymarket y, más abajo, la simulación local
+          (AMM) de esta demo.
+        </p>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <PolymarketSection />
+
+      <Separator />
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold">Simulación local (white-label)</h2>
+          <p className="text-sm text-muted-foreground">
+            Mercados creados en tu tenant con LMSR — operables aquí (login
+            requerido).
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {markets.map((m) => (
+            <Link key={m.id} href={`/markets/${m.id}`}>
+              <Card className="h-full transition-colors hover:bg-muted/40">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-lg">{m.title}</CardTitle>
+                    <Badge variant="secondary">{statusLabel(m.status)}</Badge>
+                  </div>
+                  {m.category && (
+                    <CardDescription>{m.category}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-3">
+                    {m.outcomes.map((o) => (
+                      <div
+                        key={o.id}
+                        className="rounded-md border bg-background px-3 py-2 text-sm"
+                      >
+                        <span className="text-muted-foreground">{o.name}</span>
+                        <span className="ml-2 font-mono font-semibold text-primary">
+                          {(Number(o.currentPrice) * 100).toFixed(1)}¢
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+
+        {markets.length === 0 && (
+          <p className="text-muted-foreground">
+            No hay mercados locales. Un administrador puede crear uno desde el
+            panel.
+          </p>
+        )}
+      </section>
     </div>
   );
 }
