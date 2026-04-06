@@ -10,6 +10,16 @@ export async function GET() {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const { state } = await loadPaperPortfolioForUser(session.user.id);
-  return NextResponse.json(state);
+  try {
+    const { state } = await loadPaperPortfolioForUser(session.user.id);
+    return NextResponse.json(state);
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[paper-trading/portfolio GET]", err);
+    }
+    return NextResponse.json(
+      { error: "No se pudo cargar el portfolio" },
+      { status: 500 }
+    );
+  }
 }

@@ -3,6 +3,11 @@ import Credentials from "next-auth/providers/credentials";
 import type { Role } from "@/generated/prisma/enums";
 import { authorizeCredentials } from "@/lib/auth/credentials";
 
+/** Render inyecta `RENDER_EXTERNAL_URL` (https://…onrender.com); Auth.js usa `AUTH_URL`. */
+const renderUrl = process.env.RENDER_EXTERNAL_URL;
+if (renderUrl && !process.env.AUTH_URL) process.env.AUTH_URL = renderUrl;
+if (renderUrl && !process.env.NEXTAUTH_URL) process.env.NEXTAUTH_URL = renderUrl;
+
 const authSecret =
   process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? null;
 
