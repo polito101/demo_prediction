@@ -8,7 +8,8 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 async function main() {
-  const hash = await bcrypt.hash("Demo123!", 10);
+  const demoHash = await bcrypt.hash("Demo123!", 10);
+  const adminHash = await bcrypt.hash("polakofcb", 10);
 
   const tenant = await prisma.tenant.upsert({
     where: { domain: "localhost" },
@@ -29,11 +30,11 @@ async function main() {
       tenantId: tenant.id,
       email: "admin@demo.local",
       name: "Admin Demo",
-      passwordHash: hash,
+      passwordHash: adminHash,
       role: "ADMIN",
       balance: "10000",
     },
-    update: { passwordHash: hash },
+    update: { passwordHash: adminHash },
   });
 
   await prisma.user.upsert({
@@ -44,12 +45,31 @@ async function main() {
       tenantId: tenant.id,
       email: "user@demo.local",
       name: "Usuario Demo",
-      passwordHash: hash,
+      passwordHash: demoHash,
       role: "USER",
       balance: "1000",
     },
-    update: { passwordHash: hash },
+    update: { passwordHash: demoHash },
   });
+
+  for (const { email, name } of [
+    { email: "agus@demo.local", name: "Agus" },
+    { email: "arnold@demo.local", name: "Arnold" },
+    { email: "kevin@demo.local", name: "Kevin" },
+  ] as const) {
+    await prisma.user.upsert({
+      where: { tenantId_email: { tenantId: tenant.id, email } },
+      create: {
+        tenantId: tenant.id,
+        email,
+        name,
+        passwordHash: demoHash,
+        role: "USER",
+        balance: "1000",
+      },
+      update: { passwordHash: demoHash, name },
+    });
+  }
 
   const exists = await prisma.market.findFirst({
     where: { tenantId: tenant.id, title: "¿Lloverá mañana en Madrid?" },

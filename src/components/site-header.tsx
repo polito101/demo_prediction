@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LayoutDashboard, User } from "lucide-react";
+import { HeaderOpenPositionsLive } from "@/components/header-open-positions-live";
 import { SignOutButton } from "@/components/sign-out-button";
 import { UserMenuPaperReset } from "@/components/user-menu-paper-reset";
 
@@ -74,17 +75,18 @@ export async function SiteHeader({ tenant }: { tenant: Tenant }) {
           )}
         </nav>
 
-        <div>
+        <div className="flex shrink-0 items-center gap-2">
+          {session?.user && <HeaderOpenPositionsLive />}
           {session?.user ? (
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(
                   buttonVariants({ variant: "outline", size: "sm" }),
-                  "cursor-pointer"
+                  "cursor-pointer max-w-[min(100vw-8rem,280px)] truncate"
                 )}
               >
-                <User className="mr-1 h-4 w-4" />
-                {session.user.email}
+                <User className="mr-1 h-4 w-4 shrink-0" />
+                <span className="truncate">{session.user.email}</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>

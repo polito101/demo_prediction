@@ -165,6 +165,7 @@ export default async function PolymarketDetailPage({
     btcLiveMarketId = pinnedLive?.id ?? null;
   }
 
+  // eslint-disable-next-line react-hooks/purity
   const btcServerNowMs = Date.now();
   const btcInitialLeftSec =
     slotEnd != null
@@ -277,10 +278,20 @@ export default async function PolymarketDetailPage({
                 línea gris = precio a superar (apertura de la ventana). Precio en
                 streaming vía WebSocket (RTDS).
               </p>
+              <p className="text-[11px] text-zinc-600">
+                Charts by TradingView Lightweight Charts™ ·{" "}
+                <a
+                  href="https://www.tradingview.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2 hover:text-zinc-500"
+                >
+                  tradingview.com
+                </a>
+              </p>
             </div>
             <BtcUpdownMarketPanel
               marketId={id}
-              slotStartSec={slotStart!}
               slotEndSec={slotEnd!}
               targetPrice={btcTarget!}
               initialPoints={btcInitialPoints}
